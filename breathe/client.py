@@ -1,33 +1,33 @@
 import requests
 
-from .models.employees import Employees
-UNAUTHORISED = 400
-HTTP_OK = 200
-ERROR_TYPES = (
-    (405, "Method Not Allowed")
-)
+from breathe.exceptions import IncorrectlyConfigured, ConnectionError
+from breathe.models.employees import Employee
+
+PROD_URL = "https://api.breathehr.info:443/v1/"
+SANDBOX_URL = "https://api.sandbox.breathehr.info:443/v1/"
+
+
 class Client:
-    def __init__(self, api_key: str, url: str):
-        self.url = url
+    def __init__(self, api_key: str, mode: str = "production"):
+        if mode != "production" and mode != "sandbox":
+            raise IncorrectlyConfigured("Mode must be one of: production or sandbox")
+        if len(api_key) < 48:
+            raise IncorrectlyConfigured("Incorrect API key provided")
+        self.url = PROD_URL
+        if mode == "sandbox":
+            self.url = SANDBOX_URL
         self.api_key = api_key
+
         self.session = requests.Session()
         self.session.headers.update({'X-API-KEY': self.api_key})
-        self.employees = Employees(self)
+        self.employees = Employee(self)
+        self._test_connect()
 
-    def get(self, endpoint: str, data: dict = None, headers: dict = None) -> dict:
-        resp = self.session.get(self.url + endpoint, data=data, headers=headers)
-        return resp.json()
+    def _test_connect(self):
+        resp = self.request("GET", "divisions")
+        if resp.status_code != requests.codes.ok:
+            raise ConnectionError(resp.json())
 
-    def put(self, endpoint: str, data: dict = None, headers: dict = None) -> dict:
-        resp = self.session.put(self.url + endpoint, data=data, headers=headers)
-        if resp.status_code == 200:
-            return resp.json()
-        else:
-            return resp
+    def request(self, method, endpoint: str, data: dict = None, headers: dict = None, json: dict = None) -> requests.Response:
+        return self.session.request(method, self.url + endpoint, data=data, headers=headers, json=json)
 
-    def post(self, endpoint: str, data: dict = None, headers: dict = None) -> dict:
-        resp = self.session.post(self.url + endpoint, data=data, headers=headers)
-        if resp.status_code == 200:
-            return resp.json()
-        else:
-            return resp
