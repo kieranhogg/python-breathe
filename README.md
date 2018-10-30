@@ -1,6 +1,9 @@
 # python-breathe
 A Python wrapper for the Breathe HR API.
 
+## Installation
+`pip install python-breathe`
+
 ## Usage
 ```
 >>> from breathe.client import Client
